@@ -1,0 +1,113 @@
+/** ----------
+ *? Global css
+ ** ---------- */
+
+:root {
+	--white: hsl(0, 0%, 95%);
+	--txt-col: hsl(0, 0%, 13%);
+}
+
+* {
+	margin: 0px;
+	padding: 0px;
+	box-sizing: border-box;
+}
+
+button {
+	all: unset;
+	cursor: pointer;
+}
+input:not([type="checkbox"]),
+select {
+	width: 25ch;
+	outline: none !important;
+}
+input[type="number"] {
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+label,
+input,
+button {
+	/* font-family: "Didact Gothic"; */
+	color: var(--txt-col);
+}
+
+body {
+	background-color: var(--white);
+	width: 400px;
+	max-width: 400px;
+	height: 350px;
+	display: grid;
+	overflow-x: clip;
+	grid-template-rows: 2rem max-content max-content max-content;
+	gap: 1rem;
+	padding: 1rem;
+	justify-items: center;
+}
+
+h1 {
+	font-size: 1.5rem;
+	font-weight: 600;
+}
+
+#shortcut {
+	display: grid;
+	grid-template-rows: 1.25rem 1fr;
+	justify-self: start;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+#keyCombinations {
+	display: grid;
+	grid-template-rows: 1.25rem 1fr 1fr 0.8rem 0.8rem;
+	justify-self: start;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+#shortcut > label,
+#keyCombinations > label {
+	font-size: 1.25rem;
+}
+
+#shortcut > input,
+#keyCombinations > input {
+	border-radius: 8px;
+	border: 2px solid var(--txt-col);
+	padding: 0.3rem;
+	font-size: 1.1rem;
+}
+
+#shortcut > input::placeholder {
+	font-size: 1rem;
+}
+
+#keyCombinations > p {
+	font-size: 0.8rem;
+}
+
+#submit {
+	display: grid;
+	place-items: center;
+}
+
+#submit > button {
+	padding: 0.35rem 1.5rem;
+	border-radius: 7px;
+	box-shadow: -2px 2px 0px 0px var(--txt-col);
+	font-size: 1.2rem;
+	background: hsl(138, 85%, 51%);
+	transition: transform 0.2s ease-in-out;
+}
+
+#submit > button:hover {
+	transform: translateY(-5px);
+}
