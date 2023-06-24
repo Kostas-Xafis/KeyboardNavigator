@@ -4,7 +4,7 @@ chrome.storage.local.get("shortcut", ({ shortcut }) => {
 });
 chrome.storage.local.get("keyCombinations", ({ keyCombinations }) => {
 	if (!keyCombinations || !keyCombinations?.length) return;
-	document.querySelectorAll("#keyCombinationsinations > input").forEach((e, i) => (e.value = keyCombinations[i]));
+	document.querySelectorAll("#keyCombinations > input").forEach((e, i) => (e.value = keyCombinations[i]));
 });
 
 document.querySelector("#shortcut > input").addEventListener("keydown", e => {
