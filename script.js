@@ -64,6 +64,25 @@ const isInViewport = el => {
 	);
 };
 
+const exploredNodes = new Set(); // 2ms faster... :P
+const isVisible = el => {
+	let parent = el;
+	while (parent.tagName !== "BODY") {
+		const cssRule = window.getComputedStyle(parent);
+		if (
+			exploredNodes.has(parent) ||
+			cssRule.display === "none" ||
+			cssRule.visibility === "hidden" ||
+			Number(cssRule.opacity) <= 0.1
+		) {
+			exploredNodes.add(parent);
+			return false;
+		}
+		parent = parent.parentNode;
+	}
+	return true;
+};
+
 let combinationToElement = {};
 const getFocusable = () => {
 	const keyElMap = {};
@@ -72,7 +91,7 @@ const getFocusable = () => {
 	for (let i = 0, j = 0; i < elArr.length; i++) {
 		const e = elArr[i];
 		// filter those that are not tabbable || are disabled || not in the screen
-		if (e.tabIndex === -1 || ("disabled" in e && e?.disabled) || !isInViewport(e)) continue;
+		if (e.tabIndex === -1 || e?.disabled || !isInViewport(e) || !isVisible(e)) continue;
 
 		// Map each element to a unique key press of length 1-2 and return the object
 		let key = "";
@@ -82,8 +101,8 @@ const getFocusable = () => {
 		if (j < l3) {
 			key = keyCombinations[0][Math.floor(j / l2)] + keyCombinations[1][j % l2];
 		} else {
-			let index = Math.floor(j / l3);
-			let comb1 = index < l1 ? keyCombinations[0][index] : keyCombinations[0][index - l1];
+			let index = Math.floor(j / l3) - 1;
+			let comb1 = index - l1 < 0 ? keyCombinations[0][index] : keyCombinations[1][index - l1];
 			key = comb1 + keyCombinations[0][Math.floor(j / l2) % l1] + keyCombinations[1][Math.floor(j % l2)];
 		}
 		keyElMap[key] = e;
@@ -148,7 +167,7 @@ const keyCombinationHandler = key => {
 	}
 	resetCombination();
 };
-const allowedKeys = ["Control", "Alt", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape"];
+
 document.addEventListener(
 	"keydown",
 	e => {
@@ -170,7 +189,6 @@ function persistantFocus(el) {
 	// This function is specifacally made for elements in the page that auto focus themselves when a certain key is pressed
 	// And probably captures the event after the extension does
 	// Thanks for the headache @bing
-
 	if (focusController) focusController.abort();
 	focusController = new AbortController();
 
@@ -201,22 +219,29 @@ function createBubble(el, key) {
 	bubble.style.setProperty("--key-length", key.length + "ch");
 	bubble.style.setProperty("--key-font-size", 16 + "px");
 
-	if (rect.top < 26) bubble.style.setProperty("--rotate", 180 + "deg"); // 16px font size + 0.6rem padding
-	el.appendChild(bubble);
-	void bubble.offsetWidth; // To force reflow
-
-	//FIX: Bubble misplacement It has an even lower bound
-	if (rect.x + rect.x / 2 < bubble.getBoundingClientRect().x)
-		console.log("WTF", rect.x, bubble.getBoundingClientRect().x);
+	if (rect.top < 26) bubble.style.setProperty("--rotate", 180 + "deg"); // rect.top < 16px font size + 0.6rem padding
+	document.getElementById("ext-bubble-container").appendChild(bubble);
 }
 
 (function injectCSS() {
 	// Remove all bubbles when there is url change (and therefor this script reruns)
 	// but the bubble are still there
 	document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
+
+	let bubbleContainer = document.createElement("div");
+	bubbleContainer.id = "ext-bubble-container";
+	document.body.appendChild(bubbleContainer);
+
 	// Append bubble style to each website
 	const style = document.createElement("style");
 	style.innerHTML = `
+	#ext-bubble-container {
+		width:1px;
+		height:1px;
+
+		position: fixed;
+		z-index: 999999;
+	}
 	.ext-bubble {
 		--rotate: 0deg;
 		position: fixed;
