@@ -95,7 +95,8 @@ const getFocusable = () => {
 // Toggles the bubbles
 const toggleKeys = (toggle = true) => {
 	isActive = toggle;
-	if (!toggle) return document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
+	if (!isActive && !userPrefs?.autoClose && focusController) focusController.abort();
+	if (!isActive) return document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
 	combinationToElement = getFocusable();
 	for (const key in combinationToElement) createBubble(combinationToElement[key], key);
 };
@@ -164,25 +165,25 @@ document.addEventListener(
 
 document.addEventListener("keyup", e => (e.key === "Control" ? resetShortcut() : 0));
 
-let controller = null;
+let focusController = null;
 function persistantFocus(el) {
 	// This function is specifacally made for elements in the page that auto focus themselves when a certain key is pressed
 	// And probably captures the event after the extension does
 	// Thanks for the headache @bing
 
-	if (controller) controller.abort();
-	controller = new AbortController();
+	if (focusController) focusController.abort();
+	focusController = new AbortController();
 
 	el.focus();
 	el.addEventListener(
 		"blur",
-		e => {
+		() => {
 			// If the user is not using the extension but has made a selection,
 			// allow other elements to be focused after 1 second
-			if (!isActive && userPrefs?.autoClose) setTimeout(controller.abort, 1000);
+			if (!isActive && userPrefs?.autoClose) setTimeout(focusController.abort, 1000);
 			el.focus();
 		},
-		{ signal: controller.signal }
+		{ signal: focusController.signal }
 	);
 	if (userPrefs?.autoClose) toggleKeys(false);
 }
@@ -210,6 +211,9 @@ function createBubble(el, key) {
 }
 
 (function injectCSS() {
+	// Remove all bubbles when there is url change (and therefor this script reruns)
+	// but the bubble are still there
+	document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
 	// Append bubble style to each website
 	const style = document.createElement("style");
 	style.innerHTML = `
@@ -223,10 +227,10 @@ function createBubble(el, key) {
 		width: var(--width);
 		height: var(--height);
 
-		border: 2px solid pink;
+		border: 2px solid hsl(187, 65%, 65%);
 		border-radius: 2px;
 		
-		z-index: 999999
+		z-index: 999999;
 		transform-origin: center;
 		transform: rotate(var(--rotate));
 	}
@@ -241,11 +245,12 @@ function createBubble(el, key) {
 		top: calc(-2rem);
 		right: 0;
 		width: calc(var(--key-length) * var(--key-font-size) + 0.6rem) !important;
-		height: calc(var(--key-font-size) + 0.6rem) !important;
-		padding: 0.3rem;
+		height: calc(var(--key-font-size) + 0.4rem) !important;
+		padding: 0.2rem 0.3rem;
 
 		border-radius: 3px;
 		background: radial-gradient(circle at center, hsla(0,0%, 100%, 0.8), hsla(0,0%, 100%, 0.5));
+		box-shadow: -1px 1px 2px 1px hsla(0, 0%, 13%, 0.7);
 		backdrop-filter: blur(5px);
 		color: hsl(0, 0%, 8%) !important;
 		
