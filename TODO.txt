@@ -1,6 +1,7 @@
 TODO
 1 ✅ Fixed pixel size bubbles
 2 ✅ Fix bubble positioning over element
-3 ☑️ Rotate the ones near the edges
+3 ✅ Rotate the ones near the edges
 4 ✅ Fix weird activation glitches
-5 ☑️ Figure out what to do in case of custom elements like the ones on youtube
+5 ✅ Figure out what to do in case of custom elements like the ones on youtube -> leave it to tabIndex
+6 ☑️ Fix rare & weird misplacement of bubbles
