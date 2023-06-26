@@ -8,7 +8,7 @@
 			"js": ["script.js"]
 		}
 	],
-	"permissions": ["tabs", "activeTab", "background", "storage"],
+	"permissions": ["tabs", "activeTab", "storage"],
 	"action": {
 		"default_popup": "popup.html",
 		"default_title": "Keyboard Navigator"

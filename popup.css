@@ -46,7 +46,7 @@ body {
 	height: 350px;
 	display: grid;
 	overflow-x: clip;
-	grid-template-rows: 2rem max-content max-content max-content;
+	grid-template-rows: 2rem max-content max-content max-content max-content;
 	gap: 1rem;
 	padding: 1rem;
 	justify-items: center;
@@ -67,19 +67,21 @@ h1 {
 
 #keyCombinations {
 	display: grid;
-	grid-template-rows: 1.25rem 1fr 1fr 0.8rem 0.8rem;
+	grid-template-rows: 1.25rem 1fr 1fr;
 	justify-self: start;
 	align-items: center;
 	gap: 0.5rem;
 }
 
 #shortcut > label,
-#keyCombinations > label {
+#keyCombinations > label,
+#autoClosePref > label {
 	font-size: 1.25rem;
 }
 
 #shortcut > input,
-#keyCombinations > input {
+#keyCombinations > input,
+#autoClosePref > input {
 	border-radius: 8px;
 	border: 2px solid var(--txt-col);
 	padding: 0.3rem;
@@ -90,8 +92,10 @@ h1 {
 	font-size: 1rem;
 }
 
-#keyCombinations > p {
-	font-size: 0.8rem;
+#autoClosePref {
+	display: grid;
+	grid-template-columns: 1fr 1.5rem;
+	column-gap: 1rem;
 }
 
 #submit {

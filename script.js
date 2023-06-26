@@ -7,7 +7,7 @@ let executeShortcut = {
 };
 let shortcutLength = 2;
 let keyCombinations = ["ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789"];
-
+let userPrefs = {};
 const setShortcut = shortcut => {
 	if (shortcut == "" || shortcut == null || shortcut == undefined) return;
 	shortcut = shortcut.split("+");
@@ -21,7 +21,6 @@ const setShortcut = shortcut => {
 	shortcutLength = shortcut.length;
 };
 const resetShortcut = () => {
-	console.log("reset", JSON.parse(JSON.stringify(executeShortcut)));
 	for (let i = 0; i < shortcutLength; i++) executeShortcut[i].pressed = false;
 };
 
@@ -34,19 +33,26 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 	for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
 		if (key === "shortcut") setShortcut(newValue);
 		else if (key === "keyCombinations") setKeyCombinations(newValue);
+		else if (key === "prefs") userPrefs = JSON.parse(JSON.stringify(newValue));
 	}
 });
+
 chrome.storage.local.get("shortcut", ({ shortcut }) => {
 	setShortcut(shortcut);
 });
 chrome.storage.local.get("keyCombinations", ({ keyCombinations }) => {
 	setKeyCombinations(keyCombinations);
 });
+chrome.storage.local.get("prefs", ({ prefs }) => {
+	userPrefs = JSON.parse(JSON.stringify(prefs || {}));
+});
+
 /*  ---------------------------
 	Focusable element detection
 	---------------------------*/
 const isInViewport = el => {
-	// Also works when the element or its parent is hidden or has display none
+	// Also works when the element or it's
+	// parent is hidden or has display none
 	const rect = el.getBoundingClientRect();
 	return (
 		rect.height >= 1 &&
@@ -58,17 +64,15 @@ const isInViewport = el => {
 	);
 };
 
-let combinationToEl = {};
+let combinationToElement = {};
 const getFocusable = () => {
 	const keyElMap = {};
 
 	const elArr = [...document.querySelectorAll("input, select, a, button, textarea, [tabindex='0']")];
 	for (let i = 0, j = 0; i < elArr.length; i++) {
 		const e = elArr[i];
-		// filter those that are not in the screen or are disabled or hidden
-		if (e.tabIndex === -1) continue;
-		if ("disabled" in e && e.disabled) continue;
-		if (!isInViewport(e)) continue;
+		// filter those that are not tabbable || are disabled || not in the screen
+		if (e.tabIndex === -1 || ("disabled" in e && e?.disabled) || !isInViewport(e)) continue;
 
 		// Map each element to a unique key press of length 1-2 and return the object
 		let key = "";
@@ -78,10 +82,9 @@ const getFocusable = () => {
 		if (j < l3) {
 			key = keyCombinations[0][Math.floor(j / l2)] + keyCombinations[1][j % l2];
 		} else {
-			key =
-				keyCombinations[1][Math.floor(j / l3)] +
-				keyCombinations[0][Math.floor(j / l2) % l1] +
-				keyCombinations[1][Math.floor(j % l2)];
+			let index = Math.floor(j / l3);
+			let comb1 = index < l1 ? keyCombinations[0][index] : keyCombinations[0][index - l1];
+			key = comb1 + keyCombinations[0][Math.floor(j / l2) % l1] + keyCombinations[1][Math.floor(j % l2)];
 		}
 		keyElMap[key] = e;
 		j++;
@@ -89,17 +92,18 @@ const getFocusable = () => {
 	return keyElMap;
 };
 
-// Create function toggleKeys that will create a small bubble next to each focusable element and inside the bubble will be the key
+// Toggles the bubbles
 const toggleKeys = (toggle = true) => {
+	isActive = toggle;
 	if (!toggle) return document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
-	combinationToEl = getFocusable();
-	for (const key in combinationToEl) createBubble(combinationToEl[key], key);
+	combinationToElement = getFocusable();
+	for (const key in combinationToElement) createBubble(combinationToElement[key], key);
 };
 
-/*  ------------------
-	Key event handlers
-	------------------*/
-let show = true;
+/*  ------------------------------
+	Key event handlers & listeners
+	------------------------------*/
+let isActive = false;
 const shortcutHandler = key => {
 	let i = 0;
 	while (i < shortcutLength - 1 && executeShortcut[i].pressed) i++;
@@ -108,39 +112,50 @@ const shortcutHandler = key => {
 	else return resetShortcut();
 
 	if (i === shortcutLength - 1) {
-		toggleKeys(show);
-		show = !show;
+		toggleKeys(!isActive);
 		executeShortcut[shortcutLength - 1].pressed = false;
 	}
 };
 
 const keyCombination = { str: "", size: 0 };
-const keyCombinationHandler = key => {
-	if (show) {
-		keyCombination.str = "";
-		keyCombination.size = 0;
-		return;
-	}
-	keyCombination.str += key;
-	keyCombination.size++;
-	const isMatch =
-		(keyCombination.str in combinationToEl && 1) || (keyCombination.str.toUpperCase() in combinationToEl && 2) || 0;
-	if (!isMatch) return;
-
-	if (isMatch === 1) combinationToEl[keyCombination.str].focus();
-	else combinationToEl[keyCombination.str.toUpperCase()].focus();
-
+const resetCombination = () => {
 	keyCombination.str = "";
 	keyCombination.size = 0;
 };
+const keyCombinationHandler = key => {
+	if (!isActive) return resetCombination();
 
+	keyCombination.str += key;
+	keyCombination.size++;
+
+	const isMatch =
+		(keyCombination.str in combinationToElement && 1) || // Matched lower case
+		(keyCombination.str.toUpperCase() in combinationToElement && 2) || // Matched upper case
+		(keyCombination.size === 3 && 3) || // No match
+		0; // Not yet matched
+	switch (isMatch) {
+		case 1:
+			persistantFocus(combinationToElement[keyCombination.str]);
+			break;
+		case 2:
+			persistantFocus(combinationToElement[keyCombination.str.toUpperCase()]);
+			break;
+		case 3:
+			break;
+		case 0:
+			return;
+	}
+	resetCombination();
+};
+const allowedKeys = ["Control", "Alt", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape"];
 document.addEventListener(
 	"keydown",
 	e => {
+		if (e.key === "Enter" && isActive) return; // To allow enter to be pressed
+		if (isActive) e.stopPropagation();
 		if (e.repeat) return;
 		if (e.key === "Shift" || e.key === "Backspace") return; // To allow capital letters
 		const key = e.key === " " ? "Space" : e.key;
-		if (!show) e.stopPropagation();
 		keyCombinationHandler(key);
 		shortcutHandler(key);
 	},
@@ -148,6 +163,29 @@ document.addEventListener(
 );
 
 document.addEventListener("keyup", e => (e.key === "Control" ? resetShortcut() : 0));
+
+let controller = null;
+function persistantFocus(el) {
+	// This function is specifacally made for elements in the page that auto focus themselves when a certain key is pressed
+	// And probably captures the event after the extension does
+	// Thanks for the headache @bing
+
+	if (controller) controller.abort();
+	controller = new AbortController();
+
+	el.focus();
+	el.addEventListener(
+		"blur",
+		e => {
+			// If the user is not using the extension but has made a selection,
+			// allow other elements to be focused after 1 second
+			if (!isActive && userPrefs?.autoClose) setTimeout(controller.abort, 1000);
+			el.focus();
+		},
+		{ signal: controller.signal }
+	);
+	if (userPrefs?.autoClose) toggleKeys(false);
+}
 
 function createBubble(el, key) {
 	const bubble = document.createElement("div");
@@ -165,11 +203,13 @@ function createBubble(el, key) {
 	if (rect.top < 26) bubble.style.setProperty("--rotate", 180 + "deg"); // 16px font size + 0.6rem padding
 	el.appendChild(bubble);
 	void bubble.offsetWidth; // To force reflow
+
+	//FIX: Bubble misplacement It has an even lower bound
 	if (rect.x + rect.x / 2 < bubble.getBoundingClientRect().x)
 		console.log("WTF", rect.x, bubble.getBoundingClientRect().x);
 }
 
-(function appendStyle() {
+(function injectCSS() {
 	// Append bubble style to each website
 	const style = document.createElement("style");
 	style.innerHTML = `
@@ -186,6 +226,7 @@ function createBubble(el, key) {
 		border: 2px solid pink;
 		border-radius: 2px;
 		
+		z-index: 999999
 		transform-origin: center;
 		transform: rotate(var(--rotate));
 	}
@@ -199,7 +240,7 @@ function createBubble(el, key) {
 		
 		top: calc(-2rem);
 		right: 0;
-		width: calc(var(--key-length) + 0.6rem) !important;
+		width: calc(var(--key-length) * var(--key-font-size) + 0.6rem) !important;
 		height: calc(var(--key-font-size) + 0.6rem) !important;
 		padding: 0.3rem;
 
@@ -215,19 +256,5 @@ function createBubble(el, key) {
 		transform: rotate(var(--rotate));
 	}
 	`;
-	// .ext-bubble::after {
-	// 	content: "";
-	// 	position: absolute;
-	// 	display: grid;
-	// 	justify-items: center;
-	// 	align-content: center;
-
-	// 	top: calc(-2rem);
-	// 	right: 0;
-	// 	width: calc(var(--key-length) + 0.6rem) !important;
-	// 	height: calc(var(--key-font-size) + 0.6rem) !important;
-	// 	padding: 0.3rem;
-	// }
-	// `;
 	document.head.appendChild(style);
 })();
