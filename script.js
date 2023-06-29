@@ -26,11 +26,11 @@ const resetShortcut = () => {
 
 const setKeyCombinations = keyComb => {
 	if (!keyComb || !keyComb?.length) return;
-	keyCombinations = JSON.parse(JSON.stringify(keyComb));
+	keyCombinations = keyComb;
 };
 // listen for sync storage updates
 chrome.storage.onChanged.addListener((changes, namespace) => {
-	for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
+	for (let [key, { _oldValue, newValue }] of Object.entries(changes)) {
 		if (key === "shortcut") setShortcut(newValue);
 		else if (key === "keyCombinations") setKeyCombinations(newValue);
 		else if (key === "prefs") userPrefs = JSON.parse(JSON.stringify(newValue));
@@ -64,29 +64,25 @@ const isInViewport = el => {
 	);
 };
 
-const exploredNodes = new Set(); // 2ms faster... :P
+const invisibleElements = new Set(); // 4ms faster
+const setInvisibleElements = () => {
+	Array.from(document.querySelectorAll("body *:not(script, style)")).forEach(e => {
+		let cssRule = window.getComputedStyle(e);
+		if (cssRule.display[0] === "n" || cssRule.visibility[0] === "h" || Number(cssRule.opacity) <= 0.1)
+			invisibleElements.add(e);
+		else invisibleElements.delete(e);
+	});
+};
 const isVisible = el => {
 	let parent = el;
 	while (parent.tagName !== "BODY") {
-		const cssRule = window.getComputedStyle(parent);
-		if (
-			exploredNodes.has(parent) ||
-			cssRule.display === "none" ||
-			cssRule.visibility === "hidden" ||
-			Number(cssRule.opacity) <= 0.1
-		) {
-			exploredNodes.add(parent);
-			return false;
-		}
+		if (invisibleElements.has(parent)) return false;
 		parent = parent.parentNode;
 	}
 	return true;
 };
-
-let combinationToElement = {};
+const combinationToElement = new Map();
 const getFocusable = () => {
-	const keyElMap = {};
-
 	const elArr = [...document.querySelectorAll("input, select, a, button, textarea, [tabindex='0']")];
 	for (let i = 0, j = 0; i < elArr.length; i++) {
 		const e = elArr[i];
@@ -105,10 +101,30 @@ const getFocusable = () => {
 			let comb1 = index - l1 < 0 ? keyCombinations[0][index] : keyCombinations[1][index - l1];
 			key = comb1 + keyCombinations[0][Math.floor(j / l2) % l1] + keyCombinations[1][Math.floor(j % l2)];
 		}
-		keyElMap[key] = e;
+		combinationToElement.set(key, e);
 		j++;
 	}
-	return keyElMap;
+};
+
+const displayBubbles = (combination = "") => {
+	// Rerender the bubbles while preserving the focused one
+	const focusedElement = document.querySelector(`.ext-bubble-focus`);
+	const focusedKey = focusedElement?.getAttribute("data-key");
+	console.log({ focusedKey, combination });
+	let s = (focusedElement && focusedElement.outerHTML) || "";
+	if (combination === "") {
+		if (!focusedElement) combinationToElement.forEach((el, key) => (s += createBubble(el, key)));
+		else combinationToElement.forEach((el, key) => (s += key !== focusedKey ? createBubble(el, key) : ""));
+	} else {
+		if (!focusedElement)
+			combinationToElement.forEach((el, key) => (s += key.startsWith(combination) ? createBubble(el, key) : ""));
+		else
+			combinationToElement.forEach(
+				(el, key) => (s += key !== focusedKey && key.startsWith(combination) ? createBubble(el, key) : "")
+			);
+	}
+
+	document.getElementById("ext-bubble-container").innerHTML = s; // another 80% drop in time (~35ms)
 };
 
 // Toggles the bubbles
@@ -116,8 +132,8 @@ const toggleKeys = (toggle = true) => {
 	isActive = toggle;
 	if (!isActive && !userPrefs?.autoClose && focusController) focusController.abort();
 	if (!isActive) return document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
-	combinationToElement = getFocusable();
-	for (const key in combinationToElement) createBubble(combinationToElement[key], key);
+	getFocusable();
+	displayBubbles();
 };
 
 /*  ------------------------------
@@ -137,33 +153,37 @@ const shortcutHandler = key => {
 	}
 };
 
-const keyCombination = { str: "", size: 0 };
+const keyCombination = { str: "" };
 const resetCombination = () => {
 	keyCombination.str = "";
-	keyCombination.size = 0;
 };
 const keyCombinationHandler = key => {
 	if (!isActive) return resetCombination();
 
-	keyCombination.str += key;
-	keyCombination.size++;
+	keyCombination.str += key.toUpperCase();
 
+	let isMatching = false;
+	for (let [keyComb, el] of combinationToElement) {
+		if (keyComb.startsWith(keyCombination.str) && keyCombination.str.length !== keyComb.length) {
+			isMatching = true;
+			break;
+		}
+	}
 	const isMatch =
-		(keyCombination.str in combinationToElement && 1) || // Matched lower case
-		(keyCombination.str.toUpperCase() in combinationToElement && 2) || // Matched upper case
-		(keyCombination.size === 3 && 3) || // No match
-		0; // Not yet matched
+		(isMatching && 2) || // Partial match
+		(combinationToElement.has(keyCombination.str) && 1) || // Matched
+		0; // Not match
 	switch (isMatch) {
-		case 1:
-			persistantFocus(combinationToElement[keyCombination.str]);
-			break;
 		case 2:
-			persistantFocus(combinationToElement[keyCombination.str.toUpperCase()]);
-			break;
-		case 3:
+			displayBubbles(keyCombination.str);
+			return;
+		case 1:
+			persistantFocus(keyCombination.str);
+			displayBubbles();
 			break;
 		case 0:
-			return;
+			displayBubbles();
+			break;
 	}
 	resetCombination();
 };
@@ -182,10 +202,11 @@ document.addEventListener(
 	{ capture: true }
 );
 
-document.addEventListener("keyup", e => (e.key === "Control" ? resetShortcut() : 0));
+document.addEventListener("keyup", e => (e.key === executeShortcut[0].key ? resetShortcut() : 0));
 
 let focusController = null;
-function persistantFocus(el) {
+function persistantFocus(key) {
+	const el = combinationToElement.get(key);
 	// This function is specifacally made for elements in the page that auto focus themselves when a certain key is pressed
 	// And probably captures the event after the extension does
 	// Thanks for the headache @bing
@@ -204,33 +225,33 @@ function persistantFocus(el) {
 		{ signal: focusController.signal }
 	);
 	if (userPrefs?.autoClose) toggleKeys(false);
+	document.querySelector(".ext-bubble-focus")?.classList.remove("ext-bubble-focus");
+	document.querySelector(`.ext-bubble[data-key=${key}]`).classList.add("ext-bubble-focus");
 }
 
 function createBubble(el, key) {
 	const bubble = document.createElement("div");
 	bubble.classList.add("ext-bubble");
 	const rect = el.getBoundingClientRect();
-	bubble.style.setProperty("--height", rect.height + "px");
-	bubble.style.setProperty("--width", rect.width + "px");
-	bubble.style.setProperty("--top", rect.y + "px");
-	bubble.style.setProperty("--left", rect.x + "px");
-
-	bubble.style.setProperty("--key", `"${key}"`);
-	bubble.style.setProperty("--key-length", key.length + "ch");
-	bubble.style.setProperty("--key-font-size", 16 + "px");
-
-	if (rect.top < 26) bubble.style.setProperty("--rotate", 180 + "deg"); // rect.top < 16px font size + 0.6rem padding
-	document.getElementById("ext-bubble-container").appendChild(bubble);
+	const height = rect.height + "px";
+	const width = rect.width + "px";
+	const top = rect.y + "px";
+	const left = rect.x + "px";
+	key = `"${key}"`;
+	const key_length = key.length + "ch";
+	const key_font_size = 16 + "px";
+	const rotate = rect.top < 26 ? 180 + "deg" : 0 + "deg";
+	return `<div data-key=${key} class="ext-bubble" style='--rotate: ${rotate}; --key: ${key}; --key-length: ${key_length}; --key-font-size: ${key_font_size}; --left: ${left}; --top: ${top}; --width: ${width}; --height: ${height}'></div>`;
 }
 
-(function injectCSS() {
+const injectCSS = () => {
+	console.log("Script.js has been executed");
 	// Remove all bubbles when there is url change (and therefor this script reruns)
 	// but the bubble are still there
-	document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
+	document.getElementById("ext-bubble-container")?.remove();
 
 	let bubbleContainer = document.createElement("div");
 	bubbleContainer.id = "ext-bubble-container";
-	document.body.appendChild(bubbleContainer);
 
 	// Append bubble style to each website
 	const style = document.createElement("style");
@@ -285,6 +306,26 @@ function createBubble(el, key) {
 		transform-origin: center;
 		transform: rotate(var(--rotate));
 	}
+	.ext-bubble-focus {
+		border: 2px solid hsl(24, 88%, 55%);
+	}
 	`;
-	document.head.appendChild(style);
-})();
+	document.body.appendChild(bubbleContainer);
+	document.body.appendChild(style);
+};
+injectCSS();
+
+// Might be useless? I'll test it later
+let currentURL = window.location.href;
+const observer = new MutationObserver(mutations => {
+	if (currentURL !== window.location.href) {
+		currentURL = window.location.href;
+		combinationToElement.clear();
+		invisibleElements.clear();
+		setInvisibleElements();
+		injectCSS();
+	}
+	// console.log(mutations);
+});
+
+observer.observe(document.documentElement, { childList: true, subtree: true });
