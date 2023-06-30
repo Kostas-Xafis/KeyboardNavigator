@@ -1,6 +1,6 @@
 # **KeyboardNavigator**
 
-## **Fast**🔥 & **Lightweight**🪶 extension to navigate the web with a keyboard
+## 🔥**Fast** & 🪶**Lightweight** extension to navigate the web with a keyboard
 
 ### KeyboardNavigator is a browser extension aimed at users that make **heavy** use of their keyboard, and want to browse the web faster with no more than **5 keystrokes**🤯
 
@@ -16,7 +16,7 @@
 
 4. Pick 2 **unique** sets for the combinations to be displayed in each tabbable element on the page (ex: ABCDEF, 12345 -> A1, A2 ... AA1 ... 5F5).
 
-    - The total combinations are equal to set1 x set2 x (set1 + set2 + 1) (ex above: 6 x 5 x 12 = 360). From experience while developing, a good amount of combinations is around 200-350. (default: A..Z, 0..9).
+    - The total combinations are equal to set1 x set2 x (set1 + set2 + 1) (ex above: 6 x 5 x 12 = 360). From experience while developing, a good amount of combinations is around 150-300. (default: A..Z, 0..9).
 
     - Make sure the sets are convieniently set for you to type. **Note** the sets are case insensitive and all characters are converted to uppercase.
 

@@ -82,14 +82,17 @@ const isVisible = el => {
 	return true;
 };
 const combinationToElement = new Map();
-const getFocusable = () => {
-	const elArr = [...document.querySelectorAll("input, select, a, button, textarea, [tabindex='0']")];
+const resetFocusable = () => combinationToElement.clear();
+const setFocusable = () => {
+	const elArr = [
+		...document.querySelectorAll("input, select, a, button, textarea, [tabindex='0'], :not(#ext-bubble-container)"),
+	];
 	for (let i = 0, j = 0; i < elArr.length; i++) {
 		const e = elArr[i];
 		// filter those that are not tabbable || are disabled || not in the screen
 		if (e.tabIndex === -1 || e?.disabled || !isInViewport(e) || !isVisible(e)) continue;
 
-		// Map each element to a unique key press of length 1-2 and return the object
+		// Map each element to a unique key press of length 2-3 and return the object
 		let key = "";
 		const l1 = keyCombinations[0].length;
 		const l2 = keyCombinations[1].length;
@@ -110,7 +113,6 @@ const displayBubbles = (combination = "") => {
 	// Rerender the bubbles while preserving the focused one
 	const focusedElement = document.querySelector(`.ext-bubble-focus`);
 	const focusedKey = focusedElement?.getAttribute("data-key");
-	console.log({ focusedKey, combination });
 	let s = (focusedElement && focusedElement.outerHTML) || "";
 	if (combination === "") {
 		if (!focusedElement) combinationToElement.forEach((el, key) => (s += createBubble(el, key)));
@@ -127,12 +129,26 @@ const displayBubbles = (combination = "") => {
 	document.getElementById("ext-bubble-container").innerHTML = s; // another 80% drop in time (~35ms)
 };
 
+const updateFocusableElements = () => {
+	const focusedElement = document.querySelector(`.ext-bubble-focus`);
+	const focusedKey = focusedElement?.getAttribute("data-key");
+	setInvisibleElements();
+	if (invisibleElements.has(combinationToElement.get(focusedKey)))
+		focusedElement.classList.remove("ext-bubble-focus");
+
+	resetFocusable();
+	setFocusable();
+	displayBubbles();
+};
+
 // Toggles the bubbles
 const toggleKeys = (toggle = true) => {
 	isActive = toggle;
-	if (!isActive && !userPrefs?.autoClose && focusController) focusController.abort();
-	if (!isActive) return document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
-	getFocusable();
+	if (!isActive) {
+		if (!userPrefs?.autoClose && focusController) focusController.abort();
+		return document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
+	}
+	setFocusable();
 	displayBubbles();
 };
 
@@ -150,6 +166,7 @@ const shortcutHandler = key => {
 	if (i === shortcutLength - 1) {
 		toggleKeys(!isActive);
 		executeShortcut[shortcutLength - 1].pressed = false;
+		persistantFocus();
 	}
 };
 
@@ -187,14 +204,27 @@ const keyCombinationHandler = key => {
 	}
 	resetCombination();
 };
-
+const preservedKeyCodes = new Set([
+	"Enter",
+	"ArrowLeft",
+	"ArrowUp",
+	"ArrowRight",
+	"ArrowDown",
+	"PrintScreen",
+	"Insert",
+	"Delete",
+	"Meta",
+	"Backspace",
+]);
 document.addEventListener(
 	"keydown",
 	e => {
-		if (e.key === "Enter" && isActive) return; // To allow enter to be pressed
-		if (isActive) e.stopPropagation();
+		if (preservedKeyCodes.has(e.key)) return;
+		if (isActive && !e.ctrlKey) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
 		if (e.repeat) return;
-		if (e.key === "Shift" || e.key === "Backspace") return; // To allow capital letters
 		const key = e.key === " " ? "Space" : e.key;
 		keyCombinationHandler(key);
 		shortcutHandler(key);
@@ -204,9 +234,14 @@ document.addEventListener(
 
 document.addEventListener("keyup", e => (e.key === executeShortcut[0].key ? resetShortcut() : 0));
 
+document.addEventListener("scroll", () => {
+	if (!isActive) return;
+	toggleKeys(false);
+});
+
 let focusController = null;
-function persistantFocus(key) {
-	const el = combinationToElement.get(key);
+function persistantFocus(key = "") {
+	const el = key !== "" ? combinationToElement.get(key) : document.getElementById(`ext-bubble-container`);
 	// This function is specifacally made for elements in the page that auto focus themselves when a certain key is pressed
 	// And probably captures the event after the extension does
 	// Thanks for the headache @bing
@@ -224,6 +259,8 @@ function persistantFocus(key) {
 		},
 		{ signal: focusController.signal }
 	);
+	// Once the user has clicked on the element, update the focusable elements
+	el.addEventListener("click", DomUpdateListener.createInstace, { once: true, signal: focusController.signal });
 	if (userPrefs?.autoClose) toggleKeys(false);
 	document.querySelector(".ext-bubble-focus")?.classList.remove("ext-bubble-focus");
 	document.querySelector(`.ext-bubble[data-key=${key}]`).classList.add("ext-bubble-focus");
@@ -252,7 +289,7 @@ const injectCSS = () => {
 
 	let bubbleContainer = document.createElement("div");
 	bubbleContainer.id = "ext-bubble-container";
-
+	bubbleContainer.tabIndex = 0;
 	// Append bubble style to each website
 	const style = document.createElement("style");
 	style.innerHTML = `
@@ -317,15 +354,64 @@ injectCSS();
 
 // Might be useless? I'll test it later
 let currentURL = window.location.href;
-const observer = new MutationObserver(mutations => {
-	if (currentURL !== window.location.href) {
-		currentURL = window.location.href;
-		combinationToElement.clear();
-		invisibleElements.clear();
-		setInvisibleElements();
-		injectCSS();
-	}
-	// console.log(mutations);
-});
+class DomUpdateListener {
+	startTime = 0;
+	timeThreshold = 500;
+	updateHandler = new UpdateHandler(this.timeThreshold, () => {
+		this.observer.disconnect();
 
-observer.observe(document.documentElement, { childList: true, subtree: true });
+		updateFocusableElements();
+		document.dispatchEvent(new Event("domUpdateComplete"));
+	});
+	constructor() {
+		this.observer = new MutationObserver(mutations => {
+			if (this.startTime === 0) {
+				this.startTime = Date.now();
+				this.updateHandler.timeout();
+			} else if (Date.now() - this.startTime < this.timeThreshold) {
+				this.updateHandler.reset();
+			}
+		});
+		this.observer.observe(document.documentElement, { childList: true, subtree: true });
+	}
+	static createInstace() {
+		let instance = new DomUpdateListener();
+		document.addEventListener("domUpdateComplete", () => (instance = null), { once: true });
+	}
+}
+
+// Explain what the updateHandler class does
+// A class that can set an abortable timeout which can be reset
+class UpdateHandler {
+	abortController = new AbortController();
+	timeoutFired = false;
+	func = () => {};
+	timer = 0;
+	timeout = async (ms = 0) => {
+		this.timeoutFired = true;
+		return new Promise((res, rej) => {
+			let tId = setTimeout(() => {
+				this.timeoutFired = false;
+				this.func.call();
+				res(null);
+			}, ms || this.timer);
+			this.abortController.signal.onabort = () => {
+				clearTimeout(tId);
+				this.abortController = new AbortController();
+				rej(null);
+			};
+		});
+	};
+	abort = () => {
+		if (this.timeoutFired) this.abortController.abort();
+		this.timeoutFired = false;
+	};
+	reset(ms = 0) {
+		this.abort();
+		this.timeout(ms || this.timer);
+	}
+	constructor(timer = 0, func = () => {}) {
+		this.timer = timer;
+		this.func = func;
+	}
+}
