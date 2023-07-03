@@ -1,15 +1,53 @@
+const setInput = {
+	shortcut: shortcut => {
+		document.querySelector("#shortcut > input").value = shortcut;
+	},
+	keyCombinations: keyCombinations => {
+		document.querySelectorAll("#keyCombinations > input").forEach((e, i) => (e.value = keyCombinations[i]));
+	},
+	prefs: prefs => {
+		document.querySelector("input[name='autoClose']").checked = prefs["autoClose"];
+		document
+			.querySelectorAll(".prefs > input:not([name='autoClose'])")
+			.forEach(e => (e.value = prefs[e.name] || ""));
+	},
+};
+
+chrome.storage.local.get("install", async ({ install }) => {
+	console.log({ install });
+	if (install) return;
+	const defaults = {
+		shortcut: "Control+Space",
+		keyCombinations: ["ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789"],
+		prefs: {
+			autoClose: false,
+			primaryColor: "#33e7ff",
+			selectionColor: "#f17827",
+			fontSize: "16px",
+		},
+	};
+	for (const key in defaults) {
+		await chrome.storage.local.set({ [key]: defaults[key] }, console.log);
+		setInput[key](defaults[key]);
+	}
+	await chrome.storage.local.set({ install: true }, () => {});
+	console.log("Installed defaults successfully");
+});
+
 chrome.storage.local.get("shortcut", ({ shortcut }) => {
+	console.log({ shortcut });
 	if (!shortcut) return;
-	document.querySelector("#shortcut > input").value = shortcut;
+	setInput.shortcut(shortcut);
 });
 chrome.storage.local.get("keyCombinations", ({ keyCombinations }) => {
+	console.log({ keyCombinations });
 	if (!keyCombinations || !keyCombinations?.length) return;
-	document.querySelectorAll("#keyCombinations > input").forEach((e, i) => (e.value = keyCombinations[i]));
+	setInput.keyCombinations(keyCombinations);
 });
 chrome.storage.local.get("prefs", ({ prefs }) => {
+	console.log({ prefs });
 	if (!prefs) return;
-	document.querySelector("input[name='autoClose']").checked = prefs["autoClose"];
-	document.querySelectorAll(".prefs > input:not([name='autoClose'])").forEach(e => (e.value = prefs[e.name]));
+	setInput.prefs(prefs);
 });
 
 document.querySelector("#shortcut > input").addEventListener("keydown", e => {
@@ -28,7 +66,7 @@ document.querySelector("#submit > button").addEventListener("click", async e => 
 	const prefs = {
 		autoClose: document.querySelector("input[name='autoClose']").checked,
 	};
-	document.querySelectorAll("input[type='color']").forEach(e => (prefs[e.name] = e.value));
+	document.querySelectorAll(".prefs > input:not([name='autoClose'])").forEach(e => (prefs[e.name] = e.value));
 	console.log(prefs);
 	//Check that each character in keyCombinations is unique
 	const set = new Set();
@@ -47,3 +85,10 @@ document.querySelector("#submit > button").addEventListener("click", async e => 
 	await chrome.storage.local.set({ keyCombinations }, () => {});
 	await chrome.storage.local.set({ prefs }, () => {});
 });
+
+document.querySelectorAll("#settingsBar > button").forEach(e =>
+	e.addEventListener("click", e => {
+		document.querySelector(".active").classList.remove("active");
+		e.currentTarget.classList.add("active");
+	})
+);

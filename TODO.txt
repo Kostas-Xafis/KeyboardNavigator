@@ -22,5 +22,5 @@ TODO
 16 ✅ FIX : Focus on the ext-bubble-container when the shortcut is pressed to stop any input from collecting the keypresses
 17 ✅ FIX : Remaining selected bubble is not removed after a dom update
 18 ✅ FIX : Focused input losses focus when the bubbles are removed
-19 ☑️ FEAT: User preference to pick the font size of the bubbles
-20 ☑️ FEAT: Create 2 separate "pages" for shortcuts and style preferences
+19 ✅ FEAT: User preference to pick the font size of the bubbles
+20 ✅ FEAT: Create 2 separate "pages" for shortcuts and style preferences

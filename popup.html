@@ -10,7 +10,7 @@
         <div id="inputsContainer">
             <div id="shortcut">
                 <label>Shortcut toggle:</label>
-                <input type="text" placeholder="ex. ctrl+space">
+                <input type="text" placeholder="e.g. Control+Space">
             </div>
             <div id="keyCombinations">
                 <label>Key combinations:</label>
@@ -23,11 +23,28 @@
             </div>
             <div class="prefs" id="colorPref">
                 <label>Pick a color:</label>
-                <label for="baseColor">Base:</label>
-                <input type="color" name="baseColor">
+                <label for="primaryColor">Primary:</label>
+                <input type="color" name="primaryColor">
                 <label for="selectionColor">Selection:</label>
                 <input type="color" name="selectionColor">
             </div>
+            <div class="prefs" id="typePrefs">
+                <label for="fontSize">Font size</label>
+                <input type="text" name="fontSize" placeholder="e.g. 15px, 1.2rem,">
+                <!-- <label for="">Font family</label>
+                <input type="text"> -->
+            </div>
+        </div>
+        <div id="settingsBar">
+            <button id="keyboardSettings" class="active">
+                <img src="/assets/keyboard-regular.svg" alt="keyboard icon">
+            </button>
+            <button id="styleSettings">
+                <img src="/assets/paintbrush-solid.svg" alt="keyboard icon">
+            </button>
+            <button id="typeSettings">
+                <img src="/assets/font-solid.svg" alt="keyboard icon">
+            </button>
         </div>
         <div id="submit">
             <button>Set defaults</button>

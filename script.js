@@ -10,52 +10,51 @@ let shortcutLength = 2;
 let keyCombinations = ["ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789"];
 let userPrefs = {
 	autoClose: false,
-	baseColor: "#6cd2e0",
+	primaryColor: "#33e7ff",
 	selectionColor: "#f17827",
-};
-const setShortcut = shortcut => {
-	if (shortcut == "" || shortcut == null || shortcut == undefined) return;
-	shortcut = shortcut.split("+");
-	let newShortcut = {};
-	for (let i = 0; i < shortcut.length; i++) {
-		newShortcut[i] = {};
-		newShortcut[i].key = shortcut[i];
-		newShortcut[i].pressed = false;
-	}
-	executeShortcut = newShortcut;
-	shortcutLength = shortcut.length;
-};
-const resetShortcut = () => {
-	for (let i = 0; i < shortcutLength; i++) executeShortcut[i].pressed = false;
+	fontSize: "16px",
 };
 
-const setKeyCombinations = keyComb => {
-	if (!keyComb || !keyComb?.length) return;
-	keyCombinations = keyComb;
+const setPrefs = {
+	shortcut: shortcut => {
+		if (shortcut == "" || shortcut == null || shortcut == undefined) return;
+		shortcut = shortcut.split("+");
+		let newShortcut = {};
+		for (let i = 0; i < shortcut.length; i++) {
+			newShortcut[i] = {};
+			newShortcut[i].key = shortcut[i];
+			newShortcut[i].pressed = false;
+		}
+		executeShortcut = newShortcut;
+		shortcutLength = shortcut.length;
+	},
+	resetShortcut: () => {
+		for (let i = 0; i < shortcutLength; i++) executeShortcut[i].pressed = false;
+	},
+	keyCombinations: keyComb => {
+		if (!keyComb || !keyComb?.length) return;
+		keyCombinations = keyComb;
+	},
+	prefs: prefs => {
+		console.log(prefs);
+		if (!prefs || Object.keys(prefs).length === 0) return;
+		userPrefs = JSON.parse(JSON.stringify(prefs));
+		injectCSS();
+	},
 };
-const setUserPrefs = prefs => {
-	if (!prefs || Object.keys(prefs).length === 0) return;
-	userPrefs = prefs;
-	injectCSS();
-};
+
 // listen for sync storage updates
 chrome.storage.onChanged.addListener((changes, namespace) => {
 	for (let [key, { _oldValue, newValue }] of Object.entries(changes)) {
 		if (key === "shortcut") setShortcut(newValue);
-		else if (key === "keyCombinations") setKeyCombinations(newValue);
-		else if (key === "prefs") setUserPrefs(newValue);
+		else if (key === "keyCombinations") setPrefs.keyCombinations(newValue);
+		else if (key === "prefs") setPrefs.prefs(newValue);
 	}
 });
 
-chrome.storage.local.get("shortcut", ({ shortcut }) => {
-	setShortcut(shortcut);
-});
-chrome.storage.local.get("keyCombinations", ({ keyCombinations }) => {
-	setKeyCombinations(keyCombinations);
-});
-chrome.storage.local.get("prefs", ({ prefs }) => {
-	setUserPrefs(prefs);
-});
+chrome.storage.local.get("shortcut", ({ shortcut }) => setShortcut(shortcut));
+chrome.storage.local.get("keyCombinations", ({ keyCombinations }) => setPrefs.keyCombinations(keyCombinations));
+chrome.storage.local.get("prefs", ({ prefs }) => setPrefs.prefs(prefs));
 
 /*  ---------------------------
 	Focusable element detection
@@ -187,7 +186,7 @@ const shortcutHandler = key => {
 	while (i < shortcutLength - 1 && executeShortcut[i].pressed) i++;
 
 	if (key === executeShortcut[i].key) executeShortcut[i].pressed = true;
-	else return resetShortcut();
+	else return setPrefs.resetShortcut();
 
 	if (i === shortcutLength - 1) {
 		if (!isActive) persistantFocus();
@@ -258,7 +257,7 @@ document.addEventListener(
 	{ capture: true }
 );
 
-document.addEventListener("keyup", e => (e.key === executeShortcut[0].key ? resetShortcut() : 0));
+document.addEventListener("keyup", e => (e.key === executeShortcut[0].key ? setPrefs.resetShortcut() : 0));
 
 document.addEventListener("scroll", () => {
 	if (!isActive) return;
@@ -308,9 +307,8 @@ function createBubble(el, key) {
 	const left = rect.x + "px";
 	key = `"${key}"`;
 	const key_length = key.length + "ch";
-	const key_font_size = 16 + "px";
 	const rotate = rect.top < 26 ? 180 + "deg" : 0 + "deg";
-	return `<div data-key=${key} class="ext-bubble" style='--rotate: ${rotate}; --key: ${key}; --key-length: ${key_length}; --key-font-size: ${key_font_size}; --left: ${left}; --top: ${top}; --width: ${width}; --height: ${height}'></div>`;
+	return `<div data-key=${key} class="ext-bubble" style='--rotate: ${rotate}; --key: ${key}; --key-length: ${key_length}; --left: ${left}; --top: ${top}; --width: ${width}; --height: ${height}'></div>`;
 }
 
 class DomUpdateListener {
@@ -401,9 +399,10 @@ const injectCSS = () => {
 	style.id = "ext-bubble-style";
 	style.innerHTML = `
 	#ext-bubble-container {
+		--key-font-size: ${userPrefs.fontSize};
+
 		width:1px;
 		height:1px;
-
 		position: fixed;
 		z-index: 999999;
 	}
@@ -417,7 +416,7 @@ const injectCSS = () => {
 		width: var(--width);
 		height: var(--height);
 
-		border: 2px solid ${userPrefs.baseColor};
+		border: 2px solid ${userPrefs.primaryColor};
 		border-radius: 2px;
 		
 		z-index: 999999;
