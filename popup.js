@@ -9,7 +9,7 @@ chrome.storage.local.get("keyCombinations", ({ keyCombinations }) => {
 chrome.storage.local.get("prefs", ({ prefs }) => {
 	if (!prefs) return;
 	document.querySelector("input[name='autoClose']").checked = prefs["autoClose"];
-	document.querySelectorAll("input[type='color']").forEach(e => (e.value = prefs[e.name]));
+	document.querySelectorAll(".prefs > input:not([name='autoClose'])").forEach(e => (e.value = prefs[e.name]));
 });
 
 document.querySelector("#shortcut > input").addEventListener("keydown", e => {

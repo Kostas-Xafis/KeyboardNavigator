@@ -65,12 +65,14 @@ class InvisibleElements {
 
 	constructor() {}
 	setElements(clear = false) {
-		if (clear) this.elements.clear();
+		this.elements.clear();
+		let recentParent = null; // 50% faster update & 10% faster display due size reduction
 		document.querySelectorAll("body *:not(script, style)").forEach(e => {
+			if (recentParent !== e.previousSibling) return;
 			let cssRule = window.getComputedStyle(e);
-			if (cssRule.display[0] === "n" || cssRule.visibility[0] === "h" || Number(cssRule.opacity) <= 0.1)
+			if (cssRule.display[0] === "n" || cssRule.visibility[0] === "h" || Number(cssRule.opacity) <= 0.1) {
 				this.elements.add(e);
-			else this.elements.delete(e);
+			} else this.elements.delete(e);
 		});
 	}
 	has = el => this.elements.has(el);
@@ -102,8 +104,8 @@ class FocusableElements {
 		);
 	};
 
-	setFocusable = (clear = false) => {
-		if (clear) this.elements.clear();
+	setFocusable = () => {
+		this.elements.clear();
 		const elArr = [
 			...document.querySelectorAll(
 				"input, select, a, button, textarea, [tabindex='0']:not(#ext-bubble-container)"
@@ -160,24 +162,20 @@ const displayBubbles = (combination = "") => {
 const updateState = () => {
 	const focusedElement = document.querySelector(`.ext-bubble-focus`);
 	const focusedKey = focusedElement?.getAttribute("data-key");
-	invisible.setElements(true);
-	if (invisible.has(focusable.get(focusedKey))) focusedElement.classList.remove("ext-bubble-focus");
-	focusable.setFocusable(true);
+	invisible.setElements();
+	if (focusable.get(focusedKey)) focusedElement.classList.remove("ext-bubble-focus");
+	focusable.setFocusable();
 };
 
 // Toggles the bubbles
-const toggleKeys = (toggle = true) => {
+const toggleState = (toggle = true) => {
 	isActive = toggle;
 	if (!isActive) {
 		if (!userPrefs.autoClose && focusController) focusController.abort();
-		return document.querySelectorAll(".ext-bubble").forEach(e => e.remove());
+		return (document.getElementById("ext-bubble-container").innerHTML = "");
 	}
-	console.time("toggleKeys: setFocusable");
 	focusable.setFocusable();
-	console.timeEnd("toggleKeys: setFocusable");
-	console.time("toggleKeys: displayBubbles");
 	displayBubbles();
-	console.timeEnd("toggleKeys: displayBubbles");
 };
 
 /*  ------------------------------
@@ -192,10 +190,9 @@ const shortcutHandler = key => {
 	else return resetShortcut();
 
 	if (i === shortcutLength - 1) {
-		document.dispatchEvent(new Event("shortcutExecution"));
-		toggleKeys(!isActive);
+		if (!isActive) persistantFocus();
+		toggleState(!isActive);
 		executeShortcut[shortcutLength - 1].pressed = false;
-		persistantFocus();
 	}
 };
 
@@ -265,7 +262,12 @@ document.addEventListener("keyup", e => (e.key === executeShortcut[0].key ? rese
 
 document.addEventListener("scroll", () => {
 	if (!isActive) return;
-	toggleKeys(false);
+	toggleState(false);
+});
+
+document.addEventListener("domUpdateComplete", () => {
+	if (!isActive) return;
+	displayBubbles();
 });
 
 let focusController = null;
@@ -290,8 +292,7 @@ function persistantFocus(key = "") {
 		{ signal: focusController.signal }
 	);
 	if (key) {
-		if (userPrefs.autoClose) toggleKeys(false);
-		el.addEventListener("domUpdateComplete", displayBubbles, { signal: focusController.signal });
+		if (userPrefs.autoClose) toggleState(false);
 		document.querySelector(".ext-bubble-focus")?.classList.remove("ext-bubble-focus");
 		document.querySelector(`.ext-bubble[data-key=${key}]`).classList.add("ext-bubble-focus");
 	}
@@ -331,7 +332,7 @@ class DomUpdateListener {
 		updateState();
 		if (this.currentURL !== window.location.href) {
 			this.currentURL = window.location.href;
-			toggleKeys(false);
+			toggleState(false);
 		}
 		document.dispatchEvent(new Event("domUpdateComplete"));
 	});
