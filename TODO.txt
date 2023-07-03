@@ -1,21 +1,23 @@
 TODO
-1  ✅ Fixed pixel size bubbles
-2  ✅ Fix bubble positioning over element
-3  ✅ Rotate the ones near the edges
-4  ✅ Fix weird activation glitches
-5  ✅ Figure out what to do in case of custom elements like the ones on youtube -> leave it to tabIndex
-6  ✅ Fix rare & weird misplacement of bubbles (found @google search result links)
-        This can happen when the element has another element inside it that registers another DOMRect (Element as such is <br>)
-7  ✅ Fix input auto focusing when bubbles are active (found @bing search input...)
-8  ✅ Figure out how to make the bubble background be readable on any background
-9  ☑️ Once finished with chromium make it work on firefox (Anyone reading this, it'll probably be the last thing I do)
-10 ✅ User preference to auto close after a combination is pressed
-11 ☑️ User preference to pick color for the bubbles
-12 ❔ Script.js is loaded once! Need to fix how it handles the state. (Weird behavior, fixed for now)
-13 ✅ Visually show what the key combination the user is pressing when the bubbles are active
-14 ✅ Remove bubbles on scroll because they have a fixed position and it site looks ugly afterwards
+1  ✅ FIX : Pixel size bubbles
+2  ✅ FIX : Bubble positioning over element
+3  ✅ FEAT: Rotate the ones near the edges
+4  ✅ FIX : Weird activation glitches
+5  ✅ FEAT: Figure out what to do in case of custom elements like the ones on youtube -> leave it to tabIndex
+6  ✅ FIX : Rare & weird misplacement of bubbles (found @google search result links)
+                This can happen when the element has another element inside it that registers another DOMRect (Element as such is <br>)
+7  ✅ FIX : Input auto focusing when bubbles are active (found @bing search input...)
+8  ✅ FIX : Figure out how to make the bubble background be readable on any background
+9  ☑️ FEAT: Once finished with chromium make it work on firefox (Anyone reading this, it'll probably be the last thing I do)
+10 ✅ FEAT: User preference to auto close after a combination is pressed
+11 ✅ FEAT: User preference to pick color for the bubbles
+12 ✅ FIX : React's DOM cache keeps the bubbles even after the page is changed (found @github and many more probably)!
+13 ✅ FEAT: Visually show what the key combination the user is pressing when the bubbles are active
+14 ✅ FIX : Remove bubbles on scroll because they have a fixed position and it site looks ugly afterwards
        ✅ 14.1 FIX: Feature brakes the bubbles when used in Bing. Still the search bar autofocuses....
-15 ✅ Update the bubbles when active whenever the mutation observer is fired
+15 ✅ FEAT: Update the bubbles when active whenever the mutation observer is fired
         15.1 ✅ Reset the focused bubble when an update happens
         15.2 ❌ Instead of a full update, just update the bubbles that are affected by the mutation
-16 ✅ Focus on the ext-bubble-container when the shortcut is pressed to stop any input from collecting the keypresses
+        15.3 ✅ Applied a more effective way by updating the bubbles after the dom has been updated
+        
+16 ✅ FIX : Focus on the ext-bubble-container when the shortcut is pressed to stop any input from collecting the keypresses

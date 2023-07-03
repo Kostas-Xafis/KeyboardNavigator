@@ -8,7 +8,8 @@ chrome.storage.local.get("keyCombinations", ({ keyCombinations }) => {
 });
 chrome.storage.local.get("prefs", ({ prefs }) => {
 	if (!prefs) return;
-	document.querySelectorAll(".prefs > input").forEach(e => (e.checked = prefs[e.name]));
+	document.querySelector("input[name='autoClose']").checked = prefs["autoClose"];
+	document.querySelectorAll("input[type='color']").forEach(e => (e.value = prefs[e.name]));
 });
 
 document.querySelector("#shortcut > input").addEventListener("keydown", e => {
@@ -24,8 +25,10 @@ document.querySelector("#shortcut > input").addEventListener("keydown", e => {
 document.querySelector("#submit > button").addEventListener("click", async e => {
 	const shortcut = document.querySelector("#shortcut > input").value;
 	const keyCombinations = [...document.querySelectorAll("#keyCombinations > input")].map(e => e.value);
-	const prefs = {};
-	document.querySelectorAll(".prefs > input").forEach(e => (prefs[e.name] = e.checked));
+	const prefs = {
+		autoClose: document.querySelector("input[name='autoClose']").checked,
+	};
+	document.querySelectorAll("input[type='color']").forEach(e => (prefs[e.name] = e.value));
 	console.log(prefs);
 	//Check that each character in keyCombinations is unique
 	const set = new Set();

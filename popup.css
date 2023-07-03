@@ -17,7 +17,7 @@ button {
 	all: unset;
 	cursor: pointer;
 }
-input:not([type="checkbox"]),
+input:not([type="checkbox"], [type="color"]),
 select {
 	width: 25ch;
 	outline: none !important;
@@ -46,7 +46,7 @@ body {
 	height: 350px;
 	display: grid;
 	overflow-x: clip;
-	grid-template-rows: 2rem max-content max-content max-content max-content;
+	grid-template-rows: 2rem max-content max-content;
 	gap: 1rem;
 	padding: 1rem;
 	justify-items: center;
@@ -57,35 +57,42 @@ h1 {
 	font-weight: 600;
 }
 
-#shortcut {
+#inputsContainer {
 	display: grid;
-	grid-template-rows: 1.25rem 1fr;
-	justify-self: start;
-	align-items: center;
+	grid-template-columns: 1fr 1fr;
+	grid-template-rows: min-content min-content;
+	gap: 1rem 0.5rem;
+	justify-content: center;
+}
+
+#shortcut,
+#keyCombinations {
+	display: grid;
+	grid-template-rows: 1.2rem 1fr;
+	place-items: center;
 	gap: 0.5rem;
 }
 
 #keyCombinations {
-	display: grid;
-	grid-template-rows: 1.25rem 1fr 1fr;
-	justify-self: start;
-	align-items: center;
-	gap: 0.5rem;
+	grid-template-rows: 1.2rem 1fr 1fr;
 }
 
 #shortcut > label,
 #keyCombinations > label,
-#autoClosePref > label {
-	font-size: 1.25rem;
+#autoClosePref > label,
+#colorPref > label {
+	font-size: 1.2rem;
 }
 
 #shortcut > input,
 #keyCombinations > input,
 #autoClosePref > input {
+	max-width: 15ch;
 	border-radius: 8px;
 	border: 2px solid var(--txt-col);
 	padding: 0.3rem;
 	font-size: 1.1rem;
+	align-self: start;
 }
 
 #shortcut > input::placeholder {
@@ -94,8 +101,29 @@ h1 {
 
 #autoClosePref {
 	display: grid;
-	grid-template-columns: 1fr 1.5rem;
-	column-gap: 1rem;
+	grid-template-rows: 1fr 1.5rem;
+	text-align: center;
+}
+
+#autoClosePref > input {
+	align-self: auto;
+	max-width: none;
+}
+
+#colorPref {
+	display: grid;
+	grid-template-columns: min-content 1rem;
+	grid-template-rows: 1.2rem 1fr 1fr;
+	gap: 0.5rem;
+}
+
+#colorPref > label {
+	text-align: end;
+}
+
+#colorPref > label:first-of-type {
+	text-align: center;
+	grid-column: 1 / span 2;
 }
 
 #submit {
