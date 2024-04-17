@@ -6,6 +6,13 @@
 
 ---
 
+### The Project is still in development so expect lots of bugs and missed edge cases
+
+### As of now, the extension not available but you can still clone the repo and load it as an unpacked extension
+
+---
+
+
 ## Getting started
 
 1. Visit the extension store for **[chromium](https://chrome.google.com/webstore/category/extensions)** based browsers or **[firefox](https://addons.mozilla.org/)**.

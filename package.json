@@ -1,0 +1,20 @@
+{
+  "name": "keyboardnavigator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "rm -rf ./dist && vite build --config vite.config_cs.ts && vite build --config vite.config_popup.ts",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@types/chrome": "^0.0.266",
+    "@types/node": "^20.12.7",
+    "glob": "^10.3.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0"
+  }
+}
